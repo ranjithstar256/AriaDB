@@ -9,10 +9,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,7 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.room.Room
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ran.am.ariadb.ui.theme.AriaDBTheme
 
@@ -30,20 +33,34 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AriaDBTheme {
+             //   val viewModel = ViewModelProvider(this).get(TempleViewModel::class.java)
 
-                val db= Room.databaseBuilder(applicationContext,
+               /*val dbb= Room.databaseBuilder(applicationContext,
                 TempleDatabase::class.java,
                 "templedata.db"
-                    ).build()
+                    ).build()*/
 
-                saveTempleData(db, applicationContext)
+                //dbb.templedao().insertNewTemple(Temple(0, "Kedarnath", "Uttarakhand", "Shiva"))
 
+                val db= TempleDatabase.getInstance(applicationContext)
+
+
+                val templedao = db.templedao()
+                val repository= TempleRepository(templedao)
+                val vwmdl = TempleViewModel(repository)
+
+                Column {
+
+
+                saveTempleData(db, applicationContext,vwmdl)
+                retriveMainGod(vwmdl)
+                }
             }
         }
     }
 }
 @Composable
-fun saveTempleData(db: TempleDatabase, applicationContext: Context){
+fun saveTempleData(db: TempleDatabase, applicationContext: Context, viewModel: TempleViewModel){
 
     val scope = rememberCoroutineScope()
 
@@ -53,7 +70,10 @@ fun saveTempleData(db: TempleDatabase, applicationContext: Context){
 
     Column(verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()) {
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(30.dp)
+         ) {
 
         TextField(value = templename, onValueChange = { templename = it })
         TextField(value = templelocation, onValueChange = { templelocation = it })
@@ -61,10 +81,15 @@ fun saveTempleData(db: TempleDatabase, applicationContext: Context){
 
 
         Button(onClick = {
-            val Temple = Temple(0, templename, templelocation, maingod)
+
 
             scope.launch {
-                db.templedao().insertNewTemple( Temple(0, templename, templelocation, maingod))
+
+                viewModel.insertTemple(Temple(0, templename, templelocation, maingod))
+
+                //viewModel..insertStudent(Temple(0, templename, templelocation, maingod))
+
+              //  db.templedao().insertNewTemple( Temple(0, templename, templelocation, maingod))
             }
 
             Toast.makeText(applicationContext, "Data Saved", Toast.LENGTH_SHORT).show()
@@ -76,5 +101,34 @@ fun saveTempleData(db: TempleDatabase, applicationContext: Context){
     }
 }
 
+@Composable
+fun retriveMainGod(viewModel: TempleViewModel) {
+    var templename by remember { mutableStateOf("") }
+    var maingod by remember { mutableStateOf("enter main god") }
 
-// data -> data -> ran.am.ariadb -> database -> templedata.db
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        LaunchedEffect(Unit) {
+            viewModel.mainGodinvw.collect {
+                maingod = it
+            }
+        }
+
+
+        TextField(value = templename, onValueChange = { templename = it })
+        Button(onClick = {
+            // code for retriving maingod using templename
+            // select maingod from Temple where templeName = templename
+
+            viewModel.getmaingod(templename)
+
+        }) {
+            Text(text = "Get Main God")
+        }
+        Text(text = maingod)
+    }
+}
